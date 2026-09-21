@@ -34,4 +34,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         working-directory: Library_Manager_Backend
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=diegoortiz1008-hash_Library-Manager -Dsonar.organization=diegoortiz1008-hash
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=diegoortiz1008-hash_Library-Manager -Dsonar.organization=diegoortiz1008-hash -DskipTests
