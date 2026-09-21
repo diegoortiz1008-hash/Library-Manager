@@ -46,6 +46,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Password hashing only (BCryptPasswordEncoder). Does not pull in
+		     spring-boot-starter-security / web security auto-configuration. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+		</dependency>
+
 		<!-- Pinned below the version managed by spring-boot-starter-parent so that
 		     ISBN metadata payloads parse consistently across environments. -->
 		<dependency>

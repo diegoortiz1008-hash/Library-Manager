@@ -34,6 +34,9 @@ class BookServiceTest {
     @Mock
     private BookCopyRepository bookCopyRepository;
 
+    @Mock
+    private IsbnLookupService isbnLookupService;
+
     @InjectMocks
     private BookService bookService;
 
@@ -141,6 +144,43 @@ class BookServiceTest {
         Iterable<Book> result = bookService.findAllBooks();
 
         assertEquals(books, result);
+    }
+
+    @Test
+    void searchByTitleShouldDelegateToParameterizedDerivedQuery() {
+        String maliciousTitle = "Clean'; DROP TABLE books; --";
+        when(bookRepository.findByTitleContainingIgnoreCase(maliciousTitle)).thenReturn(List.of());
+
+        List<Book> result = bookService.searchByTitle(maliciousTitle);
+
+        verify(bookRepository).findByTitleContainingIgnoreCase(maliciousTitle);
+        assertEquals(List.of(), result);
+    }
+
+    @Test
+    void exportBookShouldRejectFormatsOutsideAllowList() throws Exception {
+        Book existing = book(1L, "Clean Code", "9780132350884", "1st Edition", LocalDate.of(2008, 8, 1), "Robert C. Martin");
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalArgumentException.class, () -> bookService.exportBook(1L, "csv; rm -rf /tmp"));
+    }
+
+    @Test
+    void exportBookShouldGenerateFileForAllowedFormat() throws Exception {
+        Book existing = book(1L, "Clean Code", "9780132350884", "1st Edition", LocalDate.of(2008, 8, 1), "Robert C. Martin");
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        String fileName = bookService.exportBook(1L, "csv");
+
+        assertEquals("book-1.csv", fileName);
+    }
+
+    @Test
+    void getCoverFileShouldRejectPathTraversalAttempt() {
+        Book existing = book(1L, "Clean Code", "9780132350884", "1st Edition", LocalDate.of(2008, 8, 1), "Robert C. Martin");
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(SecurityException.class, () -> bookService.getCoverFile(1L, "../../../../etc/passwd"));
     }
 
     private Book book(Long id, String title, String isbn, String edition, LocalDate publicationDate, String author) {

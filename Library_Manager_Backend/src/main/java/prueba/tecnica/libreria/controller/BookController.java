@@ -154,7 +154,7 @@ public class BookController {
     })
     public ResponseEntity<Map<String, String>> exportBook(
             @Parameter(description = "Book ID", example = "1") @PathVariable Long id,
-            @Parameter(description = "Export format", example = "csv") @RequestParam String format) throws IOException, InterruptedException {
+            @Parameter(description = "Export format", example = "csv") @RequestParam String format) throws IOException {
 
         String fileName = bookService.exportBook(id, format);
         return ResponseEntity.ok(Map.of("file", fileName));

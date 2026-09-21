@@ -1,8 +1,10 @@
 package prueba.tecnica.libreria.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import prueba.tecnica.libreria.model.entity.User;
 import prueba.tecnica.libreria.repository.UserRepository;
@@ -31,8 +34,8 @@ class UserServiceTest {
     private UserService userService;
 
     @Test
-    void createUserShouldPersistCopiedUser() {
-        User input = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10));
+    void createUserShouldPersistCopiedUserWithBCryptHashedPassword() {
+        User input = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10), "S3cretPass!");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User result = userService.createUser(input);
@@ -45,13 +48,15 @@ class UserServiceTest {
         assertEquals(input.getLastName(), savedUser.getLastName());
         assertEquals(input.getEmail(), savedUser.getEmail());
         assertEquals(input.getBirthDate(), savedUser.getBirthDate());
+        assertNotEquals(input.getPassword(), savedUser.getPassword());
+        assertTrue(new BCryptPasswordEncoder().matches(input.getPassword(), savedUser.getPassword()));
         assertEquals(savedUser, result);
     }
 
     @Test
     void updateUserShouldModifyExistingUser() {
-        User existing = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10));
-        User update = user(null, "Ana Maria", "Lopez Diaz", "ana.maria@example.com", LocalDate.of(1999, 12, 31));
+        User existing = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10), "S3cretPass!");
+        User update = user(null, "Ana Maria", "Lopez Diaz", "ana.maria@example.com", LocalDate.of(1999, 12, 31), "S3cretPass!");
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -66,7 +71,7 @@ class UserServiceTest {
 
     @Test
     void deleteUserShouldRemoveExistingUser() {
-        User existing = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10));
+        User existing = user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10), "S3cretPass!");
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
 
         userService.deleteUser(1L);
@@ -86,8 +91,8 @@ class UserServiceTest {
     @Test
     void getAllUsersShouldReturnRepositoryContent() {
         List<User> users = List.of(
-                user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10)),
-                user(2L, "Luis", "Perez", "luis@example.com", LocalDate.of(1998, 5, 20)));
+                user(1L, "Ana", "Lopez", "ana@example.com", LocalDate.of(2000, 1, 10), "S3cretPass!"),
+                user(2L, "Luis", "Perez", "luis@example.com", LocalDate.of(1998, 5, 20), "An0therPass!"));
         when(userRepository.findAll()).thenReturn(users);
 
         List<User> result = userService.getAllUsers();
@@ -95,13 +100,14 @@ class UserServiceTest {
         assertEquals(users, result);
     }
 
-    private User user(Long id, String firstName, String lastName, String email, LocalDate birthDate) {
+    private User user(Long id, String firstName, String lastName, String email, LocalDate birthDate, String password) {
         return User.builder()
                 .id(id)
                 .firstName(firstName)
                 .lastName(lastName)
                 .email(email)
                 .birthDate(birthDate)
+                .password(password)
                 .build();
     }
 }

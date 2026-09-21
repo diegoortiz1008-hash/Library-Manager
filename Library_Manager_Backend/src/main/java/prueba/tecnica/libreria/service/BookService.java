@@ -1,14 +1,16 @@
 package prueba.tecnica.libreria.service;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -29,9 +31,12 @@ public class BookService {
     // Base directory where book cover images are stored
     private static final String COVERS_DIR = "covers/";
 
+    // Export formats the export endpoint is allowed to produce; format never
+    // reaches a shell command, it only selects which pure-Java branch runs.
+    private static final Set<String> ALLOWED_EXPORT_FORMATS = Set.of("csv", "pdf");
+
     public final BookRepository bookRepository;
     private final BookCopyRepository bookCopyRepository;
-    private final JdbcTemplate jdbcTemplate;
     private final IsbnLookupService isbnLookupService;
 
     // Create a Book
@@ -84,47 +89,67 @@ public class BookService {
     // Search books by (partial) title for the catalog search box
     @Transactional
     public List<Book> searchByTitle(String title) {
-        String sql = "SELECT id, title, isbn, edition, publication_date, author "
-                + "FROM books WHERE title LIKE '%" + title + "%'";
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> Book.builder()
-                .id(rs.getLong("id"))
-                .title(rs.getString("title"))
-                .isbn(rs.getString("isbn"))
-                .edition(rs.getString("edition"))
-                .publicationDate(rs.getObject("publication_date", java.time.LocalDate.class))
-                .author(rs.getString("author"))
-                .build());
+        return bookRepository.findByTitleContainingIgnoreCase(title);
     }
 
-    // Export a book's catalog entry to a report file in the requested format
-    public String exportBook(Long bookId, String format) throws IOException, InterruptedException {
+    // Export a book's catalog entry to a report file in the requested format.
+    // format is validated against a fixed allow-list and only ever selects
+    // which pure-Java content generator runs; it never reaches a shell command.
+    public String exportBook(Long bookId, String format) throws IOException {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new BookNotFoundException("Book not found with id: " + bookId));
 
-        String fileName = "book-" + bookId + "." + format;
-        String command = "echo Exporting '" + book.getTitle() + "' as " + format + " > exports/" + fileName;
+        String normalizedFormat = format == null ? "" : format.toLowerCase(Locale.ROOT);
+        if (!ALLOWED_EXPORT_FORMATS.contains(normalizedFormat)) {
+            throw new IllegalArgumentException("Unsupported export format: " + format);
+        }
 
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        ProcessBuilder processBuilder = isWindows
-                ? new ProcessBuilder("cmd.exe", "/c", command)
-                : new ProcessBuilder("sh", "-c", command);
+        String fileName = "book-" + bookId + "." + normalizedFormat;
+        String content = "csv".equals(normalizedFormat) ? toCsv(book) : toTextReport(book);
 
-        new File("exports").mkdirs();
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.waitFor();
+        Path exportsDir = Path.of("exports");
+        Files.createDirectories(exportsDir);
+        Files.writeString(exportsDir.resolve(fileName), content, StandardCharsets.UTF_8);
 
         return fileName;
     }
 
-    // Read a book's cover image from disk
+    private String toCsv(Book book) {
+        return "id,title,isbn,edition,publicationDate,author\n"
+                + book.getId() + "," + csvEscape(book.getTitle()) + "," + csvEscape(book.getIsbn()) + ","
+                + csvEscape(book.getEdition()) + "," + book.getPublicationDate() + "," + csvEscape(book.getAuthor())
+                + "\n";
+    }
+
+    private String csvEscape(String value) {
+        return value == null ? "" : "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private String toTextReport(Book book) {
+        return "Book Report\n"
+                + "ID: " + book.getId() + "\n"
+                + "Title: " + book.getTitle() + "\n"
+                + "ISBN: " + book.getIsbn() + "\n"
+                + "Edition: " + book.getEdition() + "\n"
+                + "Publication date: " + book.getPublicationDate() + "\n"
+                + "Author: " + book.getAuthor() + "\n";
+    }
+
+    // Read a book's cover image from disk. filename is resolved against
+    // COVERS_DIR and the result must stay inside it after normalization,
+    // otherwise the request is rejected (blocks "../" traversal).
     public byte[] getCoverFile(Long bookId, String filename) throws IOException {
         bookRepository.findById(bookId)
                 .orElseThrow(() -> new BookNotFoundException("Book not found with id: " + bookId));
 
-        File file = new File(COVERS_DIR + filename);
-        return Files.readAllBytes(file.toPath());
+        Path coversDir = Path.of(COVERS_DIR).toAbsolutePath().normalize();
+        Path resolved = coversDir.resolve(filename).normalize();
+
+        if (!resolved.startsWith(coversDir)) {
+            throw new SecurityException("Invalid cover file path: " + filename);
+        }
+
+        return Files.readAllBytes(resolved);
     }
 
     // Update a Book
