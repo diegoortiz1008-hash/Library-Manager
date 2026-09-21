@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        API_URL: ${API_URL:-http://localhost:8080}
+    container_name: library-manager-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
