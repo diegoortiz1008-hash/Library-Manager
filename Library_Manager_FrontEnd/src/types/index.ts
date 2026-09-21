@@ -6,7 +6,7 @@ export interface User {
   birthDate: string;
 }
 
-export type UserInput = Omit<User, 'id'>;
+export type UserInput = Omit<User, 'id'> & { password: string };
 
 export interface Book {
   id: number;

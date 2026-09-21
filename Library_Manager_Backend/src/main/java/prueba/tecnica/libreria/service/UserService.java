@@ -1,5 +1,8 @@
 package prueba.tecnica.libreria.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -25,11 +28,27 @@ public class UserService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .birthDate(user.getBirthDate())
+                .password(hashPassword(user.getPassword()))
                 .loans(user.getLoans())
                 .build();
 
         User savedUser = userRepository.save(createdUser);
         return savedUser;
+    }
+
+    // Hashes the member's library-card password before persisting it
+    private String hashPassword(String rawPassword) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            byte[] hashBytes = digest.digest(rawPassword.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hashBytes) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     //Update a User

@@ -40,6 +40,10 @@ public class User {
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
 
+    // Hashed library-card password used for member login
+    @Column(nullable = false)
+    private String password;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
     private List<Loan> loans = new ArrayList<>();

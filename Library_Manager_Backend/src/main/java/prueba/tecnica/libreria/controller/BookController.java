@@ -1,8 +1,11 @@
 package prueba.tecnica.libreria.controller;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -129,6 +132,46 @@ public class BookController {
 
         List<BookCopyResponseDTO> availableCopies = bookMapper.toCopyDtoList(bookService.findAvailableCopiesByIsbn(isbn));
         return ResponseEntity.ok(availableCopies);
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search books by title", description = "Searches the catalog for books whose title contains the given text")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Matching books retrieved successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = BookResponseDTO.class)))
+    })
+    public ResponseEntity<List<BookResponseDTO>> searchBooks(
+            @Parameter(description = "Text to search for in the book title", example = "Clean") @RequestParam String title) {
+
+        return ResponseEntity.ok(bookMapper.toDtoList(bookService.searchByTitle(title)));
+    }
+
+    @GetMapping("/{id}/export")
+    @Operation(summary = "Export a book", description = "Generates a catalog report file for a book in the requested format")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Export generated successfully"),
+        @ApiResponse(responseCode = "404", description = "Book not found", content = @Content)
+    })
+    public ResponseEntity<Map<String, String>> exportBook(
+            @Parameter(description = "Book ID", example = "1") @PathVariable Long id,
+            @Parameter(description = "Export format", example = "csv") @RequestParam String format) throws IOException, InterruptedException {
+
+        String fileName = bookService.exportBook(id, format);
+        return ResponseEntity.ok(Map.of("file", fileName));
+    }
+
+    @GetMapping("/{id}/cover")
+    @Operation(summary = "Get a book cover image", description = "Retrieves the cover image file stored for a book")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cover image retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Book or cover file not found", content = @Content)
+    })
+    public ResponseEntity<byte[]> getBookCover(
+            @Parameter(description = "Book ID", example = "1") @PathVariable Long id,
+            @Parameter(description = "Cover file name", example = "placeholder.txt") @RequestParam String filename) throws IOException {
+
+        byte[] cover = bookService.getCoverFile(id, filename);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(cover);
     }
 
 }

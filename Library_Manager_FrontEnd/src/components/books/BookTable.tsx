@@ -6,9 +6,11 @@ interface BookTableProps {
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
   onAddCopies: (bookId: number, quantity: number) => Promise<void>;
+  onExport: (bookId: number, format: string) => Promise<{ file: string }>;
+  coverUrl: (bookId: number, filename: string) => string;
 }
 
-export default function BookTable({ books, onEdit, onDelete, onAddCopies }: BookTableProps) {
+export default function BookTable({ books, onEdit, onDelete, onAddCopies, onExport, coverUrl }: BookTableProps) {
   if (books.length === 0) {
     return <p className="empty-state">No hay libros registrados.</p>;
   }
@@ -47,6 +49,17 @@ export default function BookTable({ books, onEdit, onDelete, onAddCopies }: Book
                 <button type="button" className="btn-danger" onClick={() => onDelete(book)}>
                   Eliminar
                 </button>
+                <button type="button" className="btn-secondary" onClick={() => onExport(book.id, 'csv')}>
+                  Exportar
+                </button>
+                <a
+                  className="btn-secondary"
+                  href={coverUrl(book.id, 'placeholder.txt')}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Portada
+                </a>
               </td>
             </tr>
           ))}

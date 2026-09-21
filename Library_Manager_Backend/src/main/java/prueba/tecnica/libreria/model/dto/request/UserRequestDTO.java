@@ -25,4 +25,7 @@ public class UserRequestDTO {
 
     @Schema(description = "User birth date", example = "1990-05-20")
     private LocalDate birthDate;
+
+    @Schema(description = "Library-card password", example = "S3cretPass!")
+    private String password;
 }

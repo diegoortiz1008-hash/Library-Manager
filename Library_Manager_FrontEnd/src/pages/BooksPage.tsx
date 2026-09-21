@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useBooks } from '../hooks/useBooks';
 import BookForm from '../components/books/BookForm';
 import BookTable from '../components/books/BookTable';
@@ -6,11 +6,13 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import type { Book, BookInput } from '../types';
 
 export default function BooksPage() {
-  const { books, loading, error, createBook, updateBook, deleteBook, addCopies } = useBooks();
+  const { books, loading, error, createBook, updateBook, deleteBook, addCopies, searchBooks, exportBook, coverUrl } =
+    useBooks();
   const [showForm, setShowForm] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [searchTitle, setSearchTitle] = useState('');
 
   const closeForm = () => {
     setShowForm(false);
@@ -51,6 +53,11 @@ export default function BooksPage() {
     }
   };
 
+  const handleSearch = async (e: FormEvent) => {
+    e.preventDefault();
+    await searchBooks(searchTitle);
+  };
+
   return (
     <section>
       <div className="page-header">
@@ -65,6 +72,18 @@ export default function BooksPage() {
       {error && <p className="error-message">{error}</p>}
       {deleteError && <p className="error-message">{deleteError}</p>}
 
+      <form className="search-bar" onSubmit={handleSearch}>
+        <input
+          type="text"
+          placeholder="Buscar por título..."
+          value={searchTitle}
+          onChange={(e) => setSearchTitle(e.target.value)}
+        />
+        <button type="submit" className="btn-secondary">
+          Buscar
+        </button>
+      </form>
+
       {showForm && (
         <BookForm
           initialData={editingBook ?? undefined}
@@ -77,7 +96,14 @@ export default function BooksPage() {
       {loading ? (
         <p>Cargando libros...</p>
       ) : (
-        <BookTable books={books} onEdit={handleEdit} onDelete={setDeletingBook} onAddCopies={addCopies} />
+        <BookTable
+          books={books}
+          onEdit={handleEdit}
+          onDelete={setDeletingBook}
+          onAddCopies={addCopies}
+          onExport={exportBook}
+          coverUrl={coverUrl}
+        />
       )}
 
       {deletingBook && (

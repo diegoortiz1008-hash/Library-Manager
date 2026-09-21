@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch } from '../api/config';
+import { apiFetch, API_BASE_URL } from '../api/config';
 import type { Book, BookInput, BookCopy } from '../types';
 
 export function useBooks() {
@@ -51,5 +51,41 @@ export function useBooks() {
     });
   };
 
-  return { books, loading, error, createBook, updateBook, deleteBook, addCopies, refresh: fetchBooks };
+  const searchBooks = async (title: string) => {
+    if (!title.trim()) {
+      await fetchBooks();
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch<Book[]>(`/books/search?title=${encodeURIComponent(title)}`);
+      setBooks(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al buscar libros');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportBook = async (id: number, format: string) => {
+    return apiFetch<{ file: string }>(`/books/${id}/export?format=${encodeURIComponent(format)}`);
+  };
+
+  const coverUrl = (id: number, filename: string) =>
+    `${API_BASE_URL}/books/${id}/cover?filename=${encodeURIComponent(filename)}`;
+
+  return {
+    books,
+    loading,
+    error,
+    createBook,
+    updateBook,
+    deleteBook,
+    addCopies,
+    searchBooks,
+    exportBook,
+    coverUrl,
+    refresh: fetchBooks,
+  };
 }

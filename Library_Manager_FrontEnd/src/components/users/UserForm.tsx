@@ -9,7 +9,7 @@ interface UserFormProps {
   onCancel: () => void;
 }
 
-const emptyForm: UserInput = { firstName: '', lastName: '', email: '', birthDate: '' };
+const emptyForm: UserInput = { firstName: '', lastName: '', email: '', birthDate: '', password: '' };
 
 export default function UserForm({ initialData, onSubmit, onSuccess, onCancel }: UserFormProps) {
   const [form, setForm] = useState<UserInput>(emptyForm);
@@ -25,6 +25,7 @@ export default function UserForm({ initialData, onSubmit, onSuccess, onCancel }:
             lastName: initialData.lastName,
             email: initialData.email,
             birthDate: initialData.birthDate,
+            password: '',
           }
         : emptyForm,
     );
@@ -49,6 +50,7 @@ export default function UserForm({ initialData, onSubmit, onSuccess, onCancel }:
         lastName: form.lastName.trim(),
         email: form.email.trim(),
         birthDate: form.birthDate,
+        password: form.password,
       });
       onSuccess();
     } catch (err) {
@@ -82,6 +84,15 @@ export default function UserForm({ initialData, onSubmit, onSuccess, onCancel }:
             onChange={handleChange('birthDate')}
             max={maxBirthDate}
             required
+          />
+        </label>
+        <label>
+          {initialData ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña de carnet'}
+          <input
+            type="password"
+            value={form.password}
+            onChange={handleChange('password')}
+            required={!initialData}
           />
         </label>
       </div>
